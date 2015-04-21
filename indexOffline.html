@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Climate Change</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+			  	background-color: black;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				text-align:center;
+			}
+
+			a {
+				color: #808080;
+			}
+
+			#infos {
+				color:#fff;
+				position: fixed;
+				bottom: 30px;
+				right: 30px;
+				color: #ffffff;
+				padding: 5px;
+				z-index:100;
+				text-align: right;
+				font: 11px "Lucida Grande",sans-serif;
+				color: #808080;
+			}
+
+			#infos ul {
+				width: 100%;
+				margin-top: 20px;
+			}
+
+			#infos ul li {
+				float: left;
+				list-style: none;
+				margin-left: 20px;
+			}
+
+			#infos ul li div{ 
+				float: left;
+				margin-top: 3px;
+			}
+
+			#infos ul li img {
+				width: 20px;
+				height: 20px;
+				margin-right: 5px;
+				float: left;
+			}
+
+
+			#infos ul li span {
+				margin-left: 10px;
+			}
+
+			#loading {
+				z-index: 99;
+				position: absolute;
+				left: 48%;
+				top: 48%;
+				color: red;
+				width: 64px;
+				height: 64px;
+			}
+
+			#loadingImg {
+				-webkit-animation:spin 1s linear infinite;
+    			-moz-animation:spin 1s linear infinite;
+    			animation:spin 1s linear infinite;
+			}
+
+			#siteLink,
+			#siteLink:visited {
+				color: #808080;
+			}
+
+			#furtherInfosIcon {
+				position: fixed;
+				bottom: 30px;
+				left: 30px;
+				color:white;
+				font-size: 40px;
+			}
+
+			#furtherInfosBox {
+			}
+
+			@-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+			@-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+			@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg)
+
+		</style>
+	</head>
+	<body>
+		<script src="jquery-2.1.3.min.js"></script>
+		<script src="threejs.js/three.min.js"></script>
+		<script src="threejs.js/Detector.js"></script>
+		<script src="threejs.js/dat.gui.min.js"></script>
+		<script src="threejs.js/OrbitControls.js"></script>
+
+		<div id="loading">
+			<img id="loadingImg" src="earth.png" alt="loading">
+		</div>
+		<div id="infos">
+		<p id="infoText"></p>
+		One point = one hour<br/>
+		One line   = one day<br/><br/>
+		Drag to rotate, scroll to zoom 
+		<br/><br/>
+		Made by <a id="siteLink" href="http://martinhertig.ch" alt="martinhertig.ch">Martin Hertig</a>
+		<ul id="legend">
+			<li><img src="emojis/840.png" alt="tex1"><div>Humidity</div></li>
+			<li><img src="emojis/447.png" alt="tex1"><div>Temperature</div></li>
+			<li><img src="emojis/519.png" alt="tex1"><div>Light</div></li>
+			<li><img src="emojis/756.png" alt="tex1"><div>Dust</div></li>
+			<li><img src="emojis/620.png" alt="tex1"><div>Sound</div></li>
+		</ul>
+		</div>
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container;
+			var camera, scene, renderer, particles, geometries = [], materials = [], parameters, i, h, color, sprite, size;
+			var geometryHumidity,geometryAirquality,geometryLight,geometrySound,geometryTemperature,geometryDust;
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var city = "San Francisco";
+			var dataFields = "humidity,temperature,light,dust,sound,airquality_raw";
+			var dateNow = new Date();
+			var dateBefore = new Date();
+			var entryDate = new Date();
+			var amtDays = 30;
+			var noise = 0;
+			var spacing = 30;
+			var isRotation = 0;
+			var isMouseDown = false;
+			var displaySocle = false;
+			var addSpacer = true;
+			var dotsSize = 20;
+			var postraub;
+			var isAdditiveBlendig = false;
+
+			init();
+			animate();
+
+			function init() {
+
+				// for offline version
+				dateBefore.setTime(1426978800000);
+				dateNow.setTime(1429567200000);
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 4000 );
+				camera.position.z = 1800;
+
+				controls = new THREE.OrbitControls( camera, container );
+
+				scene = new THREE.Scene();
+				factors = [0.5,1,0.01,0.005,0.01];
+
+
+				THREE.ImageUtils.crossOrigin = '';
+				spriteHumidity = THREE.ImageUtils.loadTexture( 'emojis/840.png' );
+				spriteLight = THREE.ImageUtils.loadTexture( "emojis/519.png" );
+				spriteAir = THREE.ImageUtils.loadTexture( "emojis/631.png" );
+				spriteSound = THREE.ImageUtils.loadTexture( "emojis/620.png" );
+				spriteDust = THREE.ImageUtils.loadTexture( "emojis/756.png" );
+				spriteTemperature = THREE.ImageUtils.loadTexture( "emojis/447.png" );
+				
+
+				renderer = new THREE.WebGLRenderer({ alpha: true });
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+
+				initGUI();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				$( "canvas" ).keydown(function() {
+					alert( "Handler for .keydown() called." );
+				});
+
+				getJsonData();
+
+			};
+
+				function getJsonData() {
+					var dataCanvasAPI = "dataForOfflineVersion.json?";
+					$("#loading").show();
+					$("#infoText").html(city+" <br/>"+dateBefore.getDate()+"."+(dateBefore.getMonth()+1)+"."+dateBefore.getFullYear()+" - "+dateNow.getDate()+"."+(dateNow.getMonth()+1)+"."+dateNow.getFullYear());
+					$.getJSON( dataCanvasAPI, {
+					op: "mean",
+					from: dateBefore.toJSON(),
+					before: dateNow.toJSON(),
+					resolution: "1h",
+					fields: dataFields
+					}).done(function( jsonData ) {
+						$("#loading").hide();
+						// clear previous data 
+						var obj, i;
+						for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
+						    obj = scene.children[ i ];
+						    if (obj !== camera) {
+						        scene.remove(obj);
+						    }
+						}
+						geometryHumidity = new THREE.Geometry();
+						geometryAirquality = new THREE.Geometry();
+						geometryLight = new THREE.Geometry();
+						geometrySound = new THREE.Geometry();
+						geometryTemperature = new THREE.Geometry();
+						geometryDust = new THREE.Geometry();
+						geometries = [geometryHumidity,geometryTemperature,geometryLight,geometryDust,geometrySound, geometryAirquality];
+						// helper var to transform millis to days
+						var days = 1000*60*60*24
+
+						$.each( jsonData.data, function( i, item ) {
+							var j=0;
+							entryDate.setTime(Date.parse(item.timestamp));
+							$.each( item, function( name, value ) { 
+								if (displaySocle) {
+									for (k=0;k<value*factors[j];k++) {
+										var vertex = new THREE.Vector3();
+										vertex.x = entryDate.getHours()*spacing+j*500-1000;
+										vertex.y = k*spacing-600;
+										vertex.z = (entryDate.getTime()-dateNow.getTime())/days*spacing+500;
+										geometries[j].vertices.push( vertex );
+									}
+								} else {
+									var vertex = new THREE.Vector3();
+									var spacer = 0
+									if (addSpacer) {
+										spacer = j*500-1000;
+									}
+									vertex.x = entryDate.getHours()*spacing+spacer-500;
+									vertex.y = value*factors[j]*spacing-600;
+									vertex.z = (entryDate.getTime()-dateNow.getTime())/days*spacing+500;
+									geometries[j].vertices.push( vertex );
+								}
+								j++;
+								if ( j === geometries.length ) {
+						          return false;
+						        }
+							});
+						});
+
+						parameters = [ [ [1.0, 0.2, 0.5], spriteTemperature, 20, geometryTemperature],
+									   [ [0.95, 0.1, 0.5], spriteAir, 15, geometryAirquality],
+									   [ [0.90, 0.05, 0.5], spriteHumidity, 10, geometryHumidity],
+									   [ [0.85, 0, 0.5], spriteDust, 8, geometryDust],
+									   [ [0.80, 0, 0.5], spriteSound, 5, geometrySound],
+									   [ [0.80, 0, 0.5], spriteLight, 5, geometryLight],
+									   ];
+						for ( i = 0; i < parameters.length; i ++ ) {
+
+							color  = [1,1,1];
+							sprite = parameters[i][1];
+							size   = dotsSize;
+
+							if (isAdditiveBlendig) {
+								materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+							} else {
+								materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, depthTest: false, transparent : true } );
+							}
+							particles = new THREE.PointCloud( parameters[i][3], materials[i] );
+
+							if (isRotation>0) {
+								particles.rotation.x = Math.random() * 6;
+								particles.rotation.y = Math.random() * 6;
+								particles.rotation.z = Math.random() * 6;
+							}
+							
+							scene.add( particles );	
+						}
+					})
+					 .fail(function() {
+						$("#loading").html("Error loading json data. Please try again.");
+						$("#loading").show();
+					});
+
+			}
+
+			function updateVerticles() {
+				var obj, i;
+				for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
+				    obj = scene.children[ i ];
+				    if (obj !== camera) {
+				        scene.remove(obj);
+				    }
+				}
+			}
+
+			function initGUI() {
+				var gui = new dat.GUI();
+
+
+				var paramsController = {
+					daysAmount: 30,
+					city: 'San Francisco',
+					noise: 0,
+					spacing: 30,
+					dotsSize: 20,
+					hasRotation: 0,
+					displaySocle: false,
+					addSpacer: true,
+					additiveBlending: false
+				};
+
+				var reloadJsonChanger = function() {
+					amtDays = Math.floor(paramsController.daysAmount);
+					city = paramsController.city;
+					getJsonData();
+				};
+
+				var otherValsChanger = function() {
+					noise = paramsController.noise;
+					spacing = paramsController.spacing;
+					isRotation = paramsController.hasRotation;
+					displaySocle = paramsController.displaySocle;
+					addSpacer = paramsController.addSpacer;
+					dotsSize = paramsController.dotsSize;
+					isAdditiveBlendig = paramsController.additiveBlending;
+					//updateVerticles();
+					getJsonData();
+				};
+
+				var cityController;
+				//gui.add(paramsController, 'city', [ 'San Francisco', 'Bangalore', 'Boston', 'Geneva', 'Rio de Janeiro', 'Shanghai', 'Singapore' ] ).onChange( reloadJsonChanger ).name('City');
+				//gui.add( paramsController, 'daysAmount', 1.0, 40.0, 1.0 ).name('Number of Days').onFinishChange( reloadJsonChanger );
+				gui.add( paramsController, 'spacing', 0.0, 100.0, 1.0 ).name('Spacing').onChange( otherValsChanger );
+				gui.add( paramsController, 'dotsSize', 10.0, 300.0, 1.0 ).name('Points Size').onFinishChange( otherValsChanger );
+				gui.add( paramsController, 'hasRotation', 0.0, 300.0, 1.0 ).name('Rotation').onFinishChange( otherValsChanger );
+				gui.add(paramsController, 'displaySocle').onFinishChange( otherValsChanger );
+				gui.add(paramsController, 'addSpacer').name('Separate').onFinishChange( otherValsChanger );
+				//gui.add(paramsController, 'additiveBlending').onFinishChange( otherValsChanger );
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				camera.lookAt( scene.position );
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>

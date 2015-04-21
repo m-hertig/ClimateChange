@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Data Art Generator</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+/*				background-image: url(http://sfurbanriders.org/wordpress/wp-content/uploads/2013/03/Screen-shot-2013-03-17-at-6.53.47-PM.png);*/
+				background: #000000;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				text-align:center;
+			}
+
+			a {
+				color:#0078ff;
+			}
+
+			#info {
+				color:#fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index:100;
+			}
+
+			#loading {
+				z-index: 99;
+				position: absolute;
+				left: 48%;
+				top: 48%;
+				color: red;
+				width: 64px;
+				height: 64px;
+				 -webkit-animation:spin 1s linear infinite;
+    			-moz-animation:spin 1s linear infinite;
+    			animation:spin 1s linear infinite;
+				}
+				@-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+				@-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+				@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg)
+
+		</style>
+	</head>
+	<body>
+		<script src="jquery-2.1.3.min.js"></script>
+		<script src="threejs.js/build/three.min.js"></script>
+		<script src="threejs.js/examples/js/Detector.js"></script>
+		<script src="threejs.js/examples/js/libs/stats.min.js"></script>
+		<script src="threejs.js/examples/js/libs/dat.gui.min.js"></script>
+		<script src="threejs.js/examples/js/controls/FirstPersonControls.js"></script>
+
+		<img id="loading" src="emojis/64x64/217.png" alt="loading"></div>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+			var camera, scene, renderer, particles, geometries = [], materials = [], parameters, i, h, color, sprite, size;
+			var geometryHumidity,geometryAirquality,geometryLight,geometrySound,geometryTemperature,geometryDust;
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var city = "Geneva";
+			var dateNow = new Date();
+			var dateBefore = new Date();
+			var entryDate = new Date();
+			var amtDays = 8;
+			var noise = 0;
+			var spacingV = 40;
+			var spacingH = 20;
+			var spacingZ = 30;
+			var isRotation = 0;
+			var isMouseDown = false;
+			var displaySocle = false;
+			var addSpacer = true;
+			var postraub;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.z = 1000;
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.FogExp2( 0x000000, 0.0007 );
+				factors = [0.5,1,0.01,0.005,0.01];
+
+				
+				sprite1 = THREE.ImageUtils.loadTexture( "emojis/64x64/524.png" );
+				sprite2 = THREE.ImageUtils.loadTexture( "emojis/64x64/519.png" );
+				sprite3 = THREE.ImageUtils.loadTexture( "emojis/64x64/631.png" );
+				sprite4 = THREE.ImageUtils.loadTexture( "emojis/64x64/620.png" );
+				sprite5 = THREE.ImageUtils.loadTexture( "emojis/64x64/756.png" );
+				sprite6 = THREE.ImageUtils.loadTexture( "emojis/64x64/447.png" );
+				postraub = THREE.ImageUtils.loadTexture( "postraub.png" );
+
+
+
+				renderer = new THREE.WebGLRenderer({ alpha: true });
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				container.appendChild( stats.domElement );
+
+				initGUI();
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+				window.addEventListener( 'resize', onWindowResize, false );
+				//this.city="Geneva";
+
+				getJsonData();
+
+			};
+
+				function getJsonData() {
+					// var dataCanvasAPI = "1000entries.json";
+					// $.getJSON( dataCanvasAPI, {
+					// 	count: "1000",
+					// 	sort: "desc"
+					// 	})
+					// 	.done(function( jsonData ) {
+					// 		$.each( jsonData.data, function( i, item ) {
+					var dataCanvasAPI = "http://sensor-api.localdata.com/api/v1/aggregations?over.city="+city+"&";
+					dateBefore.setTime(dateNow.getTime() - this.amtDays*24*60*60*1000);
+					$("#loading").attr("src", "emojis/64x64/"+Math.floor(Math.random()*850)+".png");
+					$("#loading").show();
+					$.getJSON( dataCanvasAPI, {
+					op: "mean",
+					from: dateBefore.toJSON(),
+					before: dateNow.toJSON(),
+					resolution: "1h",
+					fields: "humidity,temperature,light,dust,sound"
+					}).done(function( jsonData ) {
+						$("#loading").hide();
+						// clear previous data 
+						var obj, i;
+						for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
+						    obj = scene.children[ i ];
+						    if (obj !== camera) {
+						        scene.remove(obj);
+						    }
+						}
+						geometryHumidity = new THREE.Geometry();
+						geometryAirquality = new THREE.Geometry();
+						geometryLight = new THREE.Geometry();
+						geometrySound = new THREE.Geometry();
+						geometryTemperature = new THREE.Geometry();
+						geometryDust = new THREE.Geometry();
+						geometries = [geometryHumidity,geometryTemperature,geometryLight,geometryDust,geometrySound];
+
+						$.each( jsonData.data, function( i, item ) {
+							var j=0;
+							entryDate.setTime(Date.parse(item.timestamp));
+							$.each( item, function( name, value ) { 
+								if (displaySocle) {
+									for (k=0;k<value*factors[j];k++) {
+										var vertex = new THREE.Vector3();
+										vertex.x = entryDate.getHours()*spacingH+j*500-1000+Math.random()*noise;
+										vertex.y = k*spacingV-600+Math.random()*noise;
+										vertex.z = entryDate.getDate()*entryDate.getMonth()*spacingZ-800+Math.random()*noise;
+										geometries[j].vertices.push( vertex );
+									}
+								} else {
+									var vertex = new THREE.Vector3();
+									var spacer = 0
+									if (addSpacer) {
+										spacer = j*500-1000;
+									}
+									vertex.x = entryDate.getHours()*spacingH+spacer+Math.random()*noise;
+									vertex.y = value*factors[j]*spacingV-600+Math.random()*noise;
+									vertex.z = entryDate.getDate()*entryDate.getMonth()*spacingZ-800+Math.random()*noise;
+									geometries[j].vertices.push( vertex );
+								}
+								j++;
+								if ( j === geometries.length ) {
+						          return false;
+						        }
+							});
+						});
+						parameters = [ [ [1.0, 0.2, 0.5], sprite6, 20, geometryTemperature],
+									   [ [0.95, 0.1, 0.5], sprite3, 15, geometryAirquality],
+									   [ [0.90, 0.05, 0.5], sprite1, 10, geometryHumidity],
+									   [ [0.85, 0, 0.5], sprite5, 8, geometryDust],
+									   [ [0.80, 0, 0.5], sprite4, 5, geometrySound],
+									   [ [0.80, 0, 0.5], sprite2, 5, geometryLight],
+									   ];
+						for ( i = 0; i < parameters.length; i ++ ) {
+
+							color  = [1,1,1];
+							sprite = parameters[i][1];
+							//size   = parameters[i][2];
+							size   = 50;
+
+							//materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
+							//materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, depthTest: false, transparent : true } );
+							//particles = new THREE.PointCloud( parameters[i][3], materials[i] );
+
+							materials[i] = new THREE.MeshBasicMaterial( { map: postraub } );
+							particles = new THREE.Mesh( parameters[i][3], materials[i] );
+							if (isRotation>0) {
+								// particles.rotation.x = Math.random() * 6;
+								// particles.rotation.y = Math.random() * 6;
+								// particles.rotation.z = Math.random() * 6;
+							}
+
+							scene.add( particles );
+
+						}
+
+						});
+
+			}
+
+			function updateVerticles() {
+				var obj, i;
+				for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
+				    obj = scene.children[ i ];
+				    if (obj !== camera) {
+				        scene.remove(obj);
+				    }
+				}
+			}
+
+			function initGUI() {
+				var gui = new dat.GUI();
+
+
+				var paramsController = {
+					// alignment: 20.0,
+					daysAmount: 10,
+					city: 'Geneva',
+					noise: 0,
+					spacingV: 40,
+					spacingH: 20,
+					spacingZ: 30,
+					hasRotation: 0,
+					displaySocle: false,
+					addSpacer: true
+				};
+
+				var reloadJsonChanger = function() {
+					amtDays = Math.floor(paramsController.daysAmount);
+					console.log(amtDays);
+					city = paramsController.city;
+					getJsonData();
+				};
+
+				var otherValsChanger = function() {
+					noise = paramsController.noise;
+					spacingV = paramsController.spacingV;
+					spacingH = paramsController.spacingH;
+					spacingZ = paramsController.spacingZ;
+					isRotation = paramsController.hasRotation;
+					displaySocle = paramsController.displaySocle;
+					addSpacer = paramsController.addSpacer;
+					//updateVerticles();
+					getJsonData();
+				};
+
+				//reloadJsonChanger();
+				var cityController = gui.add(paramsController, 'city', [ 'San Francisco', 'Bangalore', 'Boston', 'Geneva', 'Rio de Janeiro', 'Shanghai', 'Singapore' ] ).onChange( reloadJsonChanger ).name('City');
+				gui.add( paramsController, 'daysAmount', 1.0, 40.0, 1.0 ).name('Number of Days').onFinishChange( reloadJsonChanger );
+				gui.add( paramsController, 'spacingH', 0.0, 100.0, 1.0 ).name('Spacing X').onChange( otherValsChanger );
+				gui.add( paramsController, 'spacingV', 0.0, 100.0, 1.0 ).name('Spacing Y').onChange( otherValsChanger );
+				gui.add( paramsController, 'spacingZ', 0.0, 100.0, 1.0 ).name('Spacing Z').onChange( otherValsChanger );
+				gui.add( paramsController, 'noise', 0.0, 300.0, 1.0 ).name('Disorder').onFinishChange( otherValsChanger );
+				gui.add( paramsController, 'hasRotation', 0.0, 300.0, 1.0 ).name('Rotation').onFinishChange( otherValsChanger );
+				gui.add(paramsController, 'displaySocle').onFinishChange( otherValsChanger );
+				gui.add(paramsController, 'addSpacer').onFinishChange( otherValsChanger );
+			}
+
+			function onWindowResize() {
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function onDocumentMouseMove( event ) {
+				mouseX = event.clientX - windowHalfX;
+				mouseY = event.clientY - windowHalfY;
+			}
+
+			function onDocumentMouseDown( event ) {
+				isMouseDown = true;
+			}
+
+			function onDocumentMouseUp( event ) {
+				isMouseDown = false;
+			}
+
+			function onDocumentTouchStart( event ) {
+				if ( event.touches.length === 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+				}
+			}
+
+			function onDocumentTouchMove( event ) {
+				if ( event.touches.length === 1 ) {
+					event.preventDefault();
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+				}
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+			}
+
+			function render() {
+				var time = Date.now() * 0.00005;
+
+				camera.position.x += ( mouseX - camera.position.x ) * 0.05;
+				camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
+				if (isMouseDown) {
+					camera.position.z -= 4;
+				}
+				camera.lookAt( scene.position );
+
+				// for ( i = 0; i < scene.children.length; i ++ ) {
+
+				// 	var object = scene.children[ i ];
+
+				// 	if ( object instanceof THREE.PointCloud ) {
+
+				// 		object.rotation.y = time * ( i < 4 ? i + 1 : - ( i + 1 ) );
+
+				// 	}
+
+				// }
+
+				// for ( i = 0; i < materials.length; i ++ ) {
+
+				// 	color = parameters[i][0];
+
+				// 	h = ( 360 * ( color[0] + time ) % 360 ) / 360;
+				// 	materials[i].color.setHSL( h, color[1], color[2] );
+
+				// }
+
+				renderer.render( scene, camera );
+
+			}
+
+
+		</script>
+	</body>
+</html>
