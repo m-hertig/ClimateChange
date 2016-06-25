@@ -30,7 +30,7 @@
 				z-index:100;
 				text-align: right;
 				font: 11px "Lucida Grande",sans-serif;
-				color: #808080;
+				color: #ffffff;
 			}
 
 			#infos ul {
@@ -79,7 +79,7 @@
 
 			#siteLink,
 			#siteLink:visited {
-				color: #808080;
+				color: #ffffff;
 			}
 
 			#furtherInfosIcon {
@@ -113,9 +113,7 @@
 		<p id="infoText"></p>
 		One point = one hour<br/>
 		One line   = one day<br/><br/>
-		Drag to rotate, scroll to zoom 
-		<br/><br/>
-		Made by <a id="siteLink" href="http://martinhertig.ch" alt="martinhertig.ch">Martin Hertig</a>
+		Drag to rotate, scroll to zoom
 		<ul id="legend">
 			<li><img src="emojis/840.png" alt="tex1"><div>Humidity</div></li>
 			<li><img src="emojis/447.png" alt="tex1"><div>Temperature</div></li>
@@ -130,6 +128,7 @@
 			var container;
 			var camera, scene, renderer, particles, geometries = [], materials = [], parameters, i, h, color, sprite, size;
 			var geometryHumidity,geometryAirquality,geometryLight,geometrySound,geometryTemperature,geometryDust;
+			var spriteHumidity, spriteLight, spriteAir, spriteSound, spriteDust, spriteTemperature;
 			var mouseX = 0, mouseY = 0;
 
 			var windowHalfX = window.innerWidth / 2;
@@ -143,9 +142,8 @@
 			var amtDays = 30;
 			var noise = 0;
 			var spacing = 30;
-			var isRotation = 0;
+			var isRotation = Math.random()*100;
 			var isMouseDown = false;
-			var displaySocle = false;
 			var addSpacer = true;
 			var dotsSize = 20;
 			var postraub;
@@ -171,15 +169,7 @@
 				scene = new THREE.Scene();
 				factors = [0.5,1,0.01,0.005,0.01];
 
-
-				THREE.ImageUtils.crossOrigin = '';
-				spriteHumidity = THREE.ImageUtils.loadTexture( 'emojis/840.png' );
-				spriteLight = THREE.ImageUtils.loadTexture( "emojis/519.png" );
-				spriteAir = THREE.ImageUtils.loadTexture( "emojis/631.png" );
-				spriteSound = THREE.ImageUtils.loadTexture( "emojis/620.png" );
-				spriteDust = THREE.ImageUtils.loadTexture( "emojis/756.png" );
-				spriteTemperature = THREE.ImageUtils.loadTexture( "emojis/447.png" );
-				
+				loadTextures();
 
 				renderer = new THREE.WebGLRenderer({ alpha: true });
 				renderer.setPixelRatio( window.devicePixelRatio );
@@ -195,103 +185,31 @@
 					alert( "Handler for .keydown() called." );
 				});
 
-				getJsonData();
+				populateCanvas();
 
 			};
 
-				function getJsonData() {
-					var dataCanvasAPI = "dataForOfflineVersion.json?";
+			function populateCanvas() {
+				var dataCanvasAPI = "dataForOfflineVersion.json?";
+				$("#loading").show();
+				$("#infoText").html(city+" <br/>"+dateBefore.getDate()+"."+(dateBefore.getMonth()+1)+"."+dateBefore.getFullYear()+" - "+dateNow.getDate()+"."+(dateNow.getMonth()+1)+"."+dateNow.getFullYear()+"<br/>(static version, sensor network is offline)");
+				$.getJSON( dataCanvasAPI, {
+				op: "mean",
+				from: dateBefore.toJSON(),
+				before: dateNow.toJSON(),
+				resolution: "1h",
+				fields: dataFields
+				}).done(function( jsonData ) {
+					$("#loading").hide();
+					clearPreviousData();
+					initGeometries();
+					definePointPositionsFromData(jsonData);
+					createParticles();
+				})
+				 .fail(function() {
+					$("#loading").html("Error loading json data. Please try again.");
 					$("#loading").show();
-					$("#infoText").html(city+" <br/>"+dateBefore.getDate()+"."+(dateBefore.getMonth()+1)+"."+dateBefore.getFullYear()+" - "+dateNow.getDate()+"."+(dateNow.getMonth()+1)+"."+dateNow.getFullYear());
-					$.getJSON( dataCanvasAPI, {
-					op: "mean",
-					from: dateBefore.toJSON(),
-					before: dateNow.toJSON(),
-					resolution: "1h",
-					fields: dataFields
-					}).done(function( jsonData ) {
-						$("#loading").hide();
-						// clear previous data 
-						var obj, i;
-						for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
-						    obj = scene.children[ i ];
-						    if (obj !== camera) {
-						        scene.remove(obj);
-						    }
-						}
-						geometryHumidity = new THREE.Geometry();
-						geometryAirquality = new THREE.Geometry();
-						geometryLight = new THREE.Geometry();
-						geometrySound = new THREE.Geometry();
-						geometryTemperature = new THREE.Geometry();
-						geometryDust = new THREE.Geometry();
-						geometries = [geometryHumidity,geometryTemperature,geometryLight,geometryDust,geometrySound, geometryAirquality];
-						// helper var to transform millis to days
-						var days = 1000*60*60*24
-
-						$.each( jsonData.data, function( i, item ) {
-							var j=0;
-							entryDate.setTime(Date.parse(item.timestamp));
-							$.each( item, function( name, value ) { 
-								if (displaySocle) {
-									for (k=0;k<value*factors[j];k++) {
-										var vertex = new THREE.Vector3();
-										vertex.x = entryDate.getHours()*spacing+j*500-1000;
-										vertex.y = k*spacing-600;
-										vertex.z = (entryDate.getTime()-dateNow.getTime())/days*spacing+500;
-										geometries[j].vertices.push( vertex );
-									}
-								} else {
-									var vertex = new THREE.Vector3();
-									var spacer = 0
-									if (addSpacer) {
-										spacer = j*500-1000;
-									}
-									vertex.x = entryDate.getHours()*spacing+spacer-500;
-									vertex.y = value*factors[j]*spacing-600;
-									vertex.z = (entryDate.getTime()-dateNow.getTime())/days*spacing+500;
-									geometries[j].vertices.push( vertex );
-								}
-								j++;
-								if ( j === geometries.length ) {
-						          return false;
-						        }
-							});
-						});
-
-						parameters = [ [ [1.0, 0.2, 0.5], spriteTemperature, 20, geometryTemperature],
-									   [ [0.95, 0.1, 0.5], spriteAir, 15, geometryAirquality],
-									   [ [0.90, 0.05, 0.5], spriteHumidity, 10, geometryHumidity],
-									   [ [0.85, 0, 0.5], spriteDust, 8, geometryDust],
-									   [ [0.80, 0, 0.5], spriteSound, 5, geometrySound],
-									   [ [0.80, 0, 0.5], spriteLight, 5, geometryLight],
-									   ];
-						for ( i = 0; i < parameters.length; i ++ ) {
-
-							color  = [1,1,1];
-							sprite = parameters[i][1];
-							size   = dotsSize;
-
-							if (isAdditiveBlendig) {
-								materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, blending: THREE.AdditiveBlending, depthTest: false, transparent : true } );
-							} else {
-								materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, depthTest: false, transparent : true } );
-							}
-							particles = new THREE.PointCloud( parameters[i][3], materials[i] );
-
-							if (isRotation>0) {
-								particles.rotation.x = Math.random() * 6;
-								particles.rotation.y = Math.random() * 6;
-								particles.rotation.z = Math.random() * 6;
-							}
-							
-							scene.add( particles );	
-						}
-					})
-					 .fail(function() {
-						$("#loading").html("Error loading json data. Please try again.");
-						$("#loading").show();
-					});
+				});
 
 			}
 
@@ -303,6 +221,87 @@
 				        scene.remove(obj);
 				    }
 				}
+			}
+			
+			function clearPreviousData() {
+				var obj, i;
+				for ( i = scene.children.length - 1; i >= 0 ; i -- ) {
+				    obj = scene.children[ i ];
+				    if (obj !== camera) {
+				        scene.remove(obj);
+				    }
+				}
+			}
+
+			function loadTextures() {
+				THREE.ImageUtils.crossOrigin = '';
+				spriteHumidity = THREE.ImageUtils.loadTexture( 'emojis/840.png' );
+				spriteLight = THREE.ImageUtils.loadTexture( "emojis/519.png" );
+				spriteSound = THREE.ImageUtils.loadTexture( "emojis/620.png" );
+				spriteDust = THREE.ImageUtils.loadTexture( "emojis/756.png" );
+				spriteTemperature = THREE.ImageUtils.loadTexture( "emojis/447.png" );
+			}
+
+			function definePointPositionsFromData(jsonData) {
+
+				// helper var to transform millis to days
+				var days = 1000*60*60*24;
+				$.each( jsonData.data, function( i, item ) {
+					var j=0;
+					entryDate.setTime(Date.parse(item.timestamp));
+					$.each( item, function( name, value ) { 
+						var vertex = new THREE.Vector3();
+						var spacer = 0
+						if (addSpacer) {
+							spacer = j*500-1000;
+						}
+						vertex.x = entryDate.getHours()*spacing+spacer-500;
+						vertex.y = value*factors[j]*spacing-600;
+						vertex.z = (entryDate.getTime()-dateNow.getTime())/days*spacing+500;
+						geometries[j].vertices.push( vertex );
+						j++;
+						if ( j === geometries.length ) {
+				          return false;
+				        }
+					});
+				});
+			}
+
+			function createParticles() {
+				for ( i = 0; i < parameters.length; i ++ ) {
+					color  = [1,1,1];
+					sprite = parameters[i][1];
+					size   = dotsSize;
+					materials[i] = new THREE.PointCloudMaterial( { size: size, map: sprite, depthTest: false, transparent : true } );
+					particles = new THREE.PointCloud( parameters[i][3], materials[i] );
+
+					if (isRotation>0) {
+						particles.rotation.x = Math.random() * 6;
+						particles.rotation.y = Math.random() * 6;
+						particles.rotation.z = Math.random() * 6;
+					}
+					
+					scene.add( particles );	
+				}
+			}
+
+			function initGeometries() {
+				geometryHumidity = new THREE.Geometry();
+				geometryAirquality = new THREE.Geometry();
+				geometryLight = new THREE.Geometry();
+				geometrySound = new THREE.Geometry();
+				geometryTemperature = new THREE.Geometry();
+				geometryDust = new THREE.Geometry();
+				geometries = [geometryHumidity,geometryTemperature,geometryLight,geometryDust,geometrySound, geometryAirquality];
+						
+				parameters = [ [ [1.0, 0.2, 0.5], spriteTemperature, 20, geometryTemperature],
+			   [ [0.95, 0.1, 0.5], spriteAir, 15, geometryAirquality],
+			   [ [0.90, 0.05, 0.5], spriteHumidity, 10, geometryHumidity],
+			   [ [0.85, 0, 0.5], spriteDust, 8, geometryDust],
+			   [ [0.80, 0, 0.5], spriteSound, 5, geometrySound],
+			   [ [0.80, 0, 0.5], spriteLight, 5, geometryLight],
+			   ];
+
 			}
 
 			function initGUI() {
@@ -316,7 +315,6 @@
 					spacing: 30,
 					dotsSize: 20,
 					hasRotation: 0,
-					displaySocle: false,
 					addSpacer: true,
 					additiveBlending: false
 				};
@@ -324,19 +322,18 @@
 				var reloadJsonChanger = function() {
 					amtDays = Math.floor(paramsController.daysAmount);
 					city = paramsController.city;
-					getJsonData();
+					populateCanvas();
 				};
 
 				var otherValsChanger = function() {
 					noise = paramsController.noise;
 					spacing = paramsController.spacing;
 					isRotation = paramsController.hasRotation;
-					displaySocle = paramsController.displaySocle;
 					addSpacer = paramsController.addSpacer;
 					dotsSize = paramsController.dotsSize;
 					isAdditiveBlendig = paramsController.additiveBlending;
 					//updateVerticles();
-					getJsonData();
+					populateCanvas();
 				};
 
 				var cityController;
@@ -345,7 +342,6 @@
 				gui.add( paramsController, 'spacing', 0.0, 100.0, 1.0 ).name('Spacing').onChange( otherValsChanger );
 				gui.add( paramsController, 'dotsSize', 10.0, 300.0, 1.0 ).name('Points Size').onFinishChange( otherValsChanger );
 				gui.add( paramsController, 'hasRotation', 0.0, 300.0, 1.0 ).name('Rotation').onFinishChange( otherValsChanger );
-				gui.add(paramsController, 'displaySocle').onFinishChange( otherValsChanger );
 				gui.add(paramsController, 'addSpacer').name('Separate').onFinishChange( otherValsChanger );
 				//gui.add(paramsController, 'additiveBlending').onFinishChange( otherValsChanger );
 			}
@@ -365,6 +361,8 @@
 
 				requestAnimationFrame( animate );
 
+				scene.rotation.y = scene.rotation.y +0.001;
+				particles.rotation.x = particles.rotation.x + 0.001;
 				render();
 
 			}
