@@ -1,0 +1,83 @@
+body {
+	background-color: black;
+	margin: 0px;
+	overflow: hidden;
+	font-family:Monospace;
+	font-size:13px;
+	text-align:center;
+	font-weight: bold;
+	text-align:center;
+}
+
+a {
+	color:#0078ff;
+}
+
+#infos {
+	color:#fff;
+	position: fixed;
+	bottom: 30px;
+	right: 30px;
+	color: #ffffff;
+	padding: 5px;
+	z-index:100;
+	text-align: right;
+	font: 11px "Lucida Grande",sans-serif;
+	color: #eee;
+}
+
+#infos ul {
+	width: 100%;
+	margin-top: 20px;
+}
+
+#infos ul li {
+	float: left;
+	list-style: none;
+	margin-left: 20px;
+}
+
+#infos ul li div{ 
+	float: left;
+	margin-top: 3px;
+}
+
+#infos ul li img {
+	width: 20px;
+	height: 20px;
+	margin-right: 5px;
+	float: left;
+}
+
+
+#infos ul li span {
+	margin-left: 10px;
+}
+
+#loading {
+	z-index: 99;
+	position: absolute;
+	left: 48%;
+	top: 48%;
+	color: red;
+	width: 64px;
+	height: 64px;
+}
+
+#loadingImg {
+	-webkit-animation:spin 1s linear infinite;
+	-moz-animation:spin 1s linear infinite;
+	animation:spin 1s linear infinite;
+}
+
+#furtherInfos {
+	position: fixed;
+	bottom: 30px;
+	left: 30px;
+	color:white;
+	font-size: 40px;
+}
+
+@-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+@-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg)
