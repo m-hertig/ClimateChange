@@ -14,18 +14,18 @@
 		<script src="threejs.js/OrbitControls.js"></script>
 
 		<div id="loading">
-			<img id="loadingImg" src="earth.png" alt="loading">
+			<img id="loadingImg" src="images/earth.png" alt="loading">
 		</div>
 		<div id="infos">
 		<p id="infoText"></p>
 		One point = one hour<br/>
 		One line   = one day
 		<ul id="legend">
-			<li><img src="emojis/840.png" alt="tex1"><div>Humidity</div></li>
-			<li><img src="emojis/447.png" alt="tex1"><div>Temperature</div></li>
-			<li><img src="emojis/519.png" alt="tex1"><div>Light</div></li>
-			<li><img src="emojis/756.png" alt="tex1"><div>Dust</div></li>
-			<li><img src="emojis/620.png" alt="tex1"><div>Sound</div></li>
+			<li><img src="images/emojis/840.png" alt="tex1"><div>Humidity</div></li>
+			<li><img src="images/emojis/447.png" alt="tex1"><div>Temperature</div></li>
+			<li><img src="images/emojis/519.png" alt="tex1"><div>Light</div></li>
+			<li><img src="images/emojis/756.png" alt="tex1"><div>Dust</div></li>
+			<li><img src="images/emojis/620.png" alt="tex1"><div>Sound</div></li>
 		</ul>
 		</div>
 		<script>
@@ -138,11 +138,11 @@
 
 			function loadTextures() {
 				THREE.ImageUtils.crossOrigin = '';
-				spriteHumidity = THREE.ImageUtils.loadTexture( 'emojis/840.png' );
-				spriteLight = THREE.ImageUtils.loadTexture( "emojis/519.png" );
-				spriteSound = THREE.ImageUtils.loadTexture( "emojis/620.png" );
-				spriteDust = THREE.ImageUtils.loadTexture( "emojis/756.png" );
-				spriteTemperature = THREE.ImageUtils.loadTexture( "emojis/447.png" );
+				spriteHumidity = THREE.ImageUtils.loadTexture( 'images/emojis/840.png' );
+				spriteLight = THREE.ImageUtils.loadTexture( "images/emojis/519.png" );
+				spriteSound = THREE.ImageUtils.loadTexture( "images/emojis/620.png" );
+				spriteDust = THREE.ImageUtils.loadTexture( "images/emojis/756.png" );
+				spriteTemperature = THREE.ImageUtils.loadTexture( "images/emojis/447.png" );
 			}
 
 			function definePointPositionsFromData(jsonData) {
@@ -247,16 +247,6 @@
 				gui.add( paramsController, 'hasRotation', 0.0, 300.0, 1.0 ).name('Rotation').onFinishChange( otherValsChanger );
 				gui.add(paramsController, 'addSpacer').name('Separate').onFinishChange( otherValsChanger );
 				//gui.add(paramsController, 'additiveBlending').onFinishChange( otherValsChanger );
-			}
-
-			function loadTextures() {
-				THREE.ImageUtils.crossOrigin = '';
-				spriteHumidity = THREE.ImageUtils.loadTexture( 'emojis/840.png' );
-				spriteLight = THREE.ImageUtils.loadTexture( "emojis/519.png" );
-				spriteAir = THREE.ImageUtils.loadTexture( "emojis/631.png" );
-				spriteSound = THREE.ImageUtils.loadTexture( "emojis/620.png" );
-				spriteDust = THREE.ImageUtils.loadTexture( "emojis/756.png" );
-				spriteTemperature = THREE.ImageUtils.loadTexture( "emojis/447.png" );
 			}
 
 			function onWindowResize() {
